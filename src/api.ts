@@ -1,5 +1,5 @@
 /**
- * 前端 API 层 — 直接对接 Supabase (RLS 保护)
+ * 前端 API 层 — 直接对接 Supabase (用户隔离)
  */
 import { supabase } from './supabase';
 import { ClothingItem } from './types';
@@ -45,10 +45,14 @@ export async function fetchItem(id: string): Promise<ClothingItem> {
   return toItem(data);
 }
 
-// 创建单品
+// 创建单品 (自动绑定当前用户)
 export async function createItem(
   payload: Omit<ClothingItem, 'id' | 'createdAt'>
 ): Promise<ClothingItem> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const userId = sessionData.session?.user?.id;
+  if (!userId) throw new Error('请先登录');
+
   const { data, error } = await supabase
     .from('closet_items')
     .insert({
@@ -62,6 +66,7 @@ export async function createItem(
       image: payload.image,
       tags: payload.tags,
       category: payload.category,
+      user_id: userId,
     })
     .select()
     .single();

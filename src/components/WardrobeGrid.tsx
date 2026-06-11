@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { Search, SlidersHorizontal, Plus, Sparkles, Filter, CheckCircle2, Shirt } from 'lucide-react';
+import { Search, SlidersHorizontal, Plus, Sparkles, Filter, CheckCircle2, Shirt, LogOut } from 'lucide-react';
 import { ClothingItem, TabType } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -12,6 +12,7 @@ interface WardrobeGridProps {
   items: ClothingItem[];
   onSelectItem: (item: ClothingItem) => void;
   onAddItem: () => void;
+  onLogout: () => void;
 }
 
 const CATEGORIES: { value: TabType; label: string }[] = [
@@ -25,7 +26,7 @@ const CATEGORIES: { value: TabType; label: string }[] = [
 const OCCASIONS = ['全部场合', '休闲', '商务', '居家', '运动', '通勤'];
 const AVAILABLE_TAGS = ['已洗涤', '待搭配', '最爱', '待清洗', '已干洗'];
 
-export default function WardrobeGrid({ items, onSelectItem, onAddItem }: WardrobeGridProps) {
+export default function WardrobeGrid({ items, onSelectItem, onAddItem, onLogout }: WardrobeGridProps) {
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOccasion, setSelectedOccasion] = useState('全部场合');
@@ -94,13 +95,22 @@ export default function WardrobeGrid({ items, onSelectItem, onAddItem }: Wardrob
           <span className="text-xs uppercase tracking-[0.15em] text-white/50 font-semibold active-glow">My Closet</span>
           <h1 className="text-display-lg font-display tracking-tight text-white">我的衣橱</h1>
         </div>
-        <button 
-          onClick={onAddItem}
-          className="w-12 h-12 rounded-full glass-panel border-white/10 text-white flex items-center justify-center shadow-lg active:scale-95 transition-all hover:bg-white/10 hover:border-white/20"
-          id="btn-add-item-header"
-        >
-          <Plus size={24} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={onLogout}
+            title="退出登录"
+            className="w-10 h-10 rounded-full glass-panel border-white/10 text-white/60 flex items-center justify-center shadow-lg active:scale-95 transition-all hover:bg-white/10 hover:text-white/80"
+          >
+            <LogOut size={16} />
+          </button>
+          <button 
+            onClick={onAddItem}
+            className="w-12 h-12 rounded-full glass-panel border-white/10 text-white flex items-center justify-center shadow-lg active:scale-95 transition-all hover:bg-white/10 hover:border-white/20"
+            id="btn-add-item-header"
+          >
+            <Plus size={24} />
+          </button>
+        </div>
       </div>
 
       {/* Overview Stat Widgets */}
