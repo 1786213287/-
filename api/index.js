@@ -1,10 +1,9 @@
 /**
  * Vercel Serverless Function — 衣橱 API
- * 处理所有 /api/* 请求
  */
-import express from 'express';
-import cors from 'cors';
-import { createClient } from '@supabase/supabase-js';
+const express = require('express');
+const cors = require('cors');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 
@@ -24,16 +23,18 @@ app.get('/api/items', async (_req, res) => {
       .select('*')
       .order('created_at', { ascending: false });
     if (error) throw error;
-    const items = data.map(row => ({
-      id: row.id, name: row.name, collection: row.collection,
-      price: row.price, material: row.material, color: row.color,
-      occasion: row.occasion, description: row.description,
-      image: row.image, tags: row.tags, category: row.category,
-      createdAt: row.created_at,
-    }));
+    const items = data.map(function(row) {
+      return {
+        id: row.id, name: row.name, collection: row.collection,
+        price: row.price, material: row.material, color: row.color,
+        occasion: row.occasion, description: row.description,
+        image: row.image, tags: row.tags, category: row.category,
+        createdAt: row.created_at,
+      };
+    });
     res.json({ success: true, data: items });
   } catch (err) {
-    res.status(500).json({ success: false, error: (err as Error).message });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -44,84 +45,88 @@ app.get('/api/items/:id', async (req, res) => {
       .from('closet_items').select('*').eq('id', req.params.id).single();
     if (error) throw error;
     if (!data) return res.status(404).json({ success: false, error: '单品不存在' });
-    res.json({ success: true, data: { ...data, createdAt: data.created_at } });
+    res.json({ success: true, data: Object.assign({}, data, { createdAt: data.created_at }) });
   } catch (err) {
-    res.status(500).json({ success: false, error: (err as Error).message });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
 // POST /api/items
 app.post('/api/items', async (req, res) => {
   try {
-    const { name, image } = req.body;
-    if (!name?.trim()) return res.status(400).json({ success: false, error: '服装名称为必填项' });
+    var name = req.body.name;
+    var image = req.body.image;
+    if (!name || !name.trim()) return res.status(400).json({ success: false, error: '服装名称为必填项' });
     if (!image) return res.status(400).json({ success: false, error: '服装照片为必填项' });
-    const { data, error } = await supabase
-      .from('closet_items')
-      .insert({
-        name: name.trim(), collection: req.body.collection?.trim() || 'Essential Collection',
-        price: Number(req.body.price) || 0, material: req.body.material?.trim() || '',
-        color: req.body.color?.trim() || '', occasion: req.body.occasion || '休闲',
-        description: req.body.description?.trim() || '', image,
-        tags: Array.isArray(req.body.tags) ? req.body.tags : [],
-        category: req.body.category || 'tops',
-      })
-      .select().single();
-    if (error) throw error;
-    res.status(201).json({ success: true, data: { ...data, createdAt: data.created_at } });
+    var insertData = {
+      name: name.trim(),
+      collection: (req.body.collection || '').trim() || 'Essential Collection',
+      price: Number(req.body.price) || 0,
+      material: (req.body.material || '').trim() || '',
+      color: (req.body.color || '').trim() || '',
+      occasion: req.body.occasion || '休闲',
+      description: (req.body.description || '').trim() || '',
+      image: image,
+      tags: Array.isArray(req.body.tags) ? req.body.tags : [],
+      category: req.body.category || 'tops',
+    };
+    var result = await supabase.from('closet_items').insert(insertData).select().single();
+    if (result.error) throw result.error;
+    res.status(201).json({ success: true, data: Object.assign({}, result.data, { createdAt: result.data.created_at }) });
   } catch (err) {
-    res.status(500).json({ success: false, error: (err as Error).message });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
 // PUT /api/items/:id
 app.put('/api/items/:id', async (req, res) => {
   try {
-    const { name } = req.body;
-    if (!name?.trim()) return res.status(400).json({ success: false, error: '服装名称为必填项' });
-    const { data, error } = await supabase
-      .from('closet_items')
-      .update({
-        name: name.trim(), collection: req.body.collection?.trim() || 'Essential Collection',
-        price: Number(req.body.price) || 0, material: req.body.material?.trim() || '',
-        color: req.body.color?.trim() || '', occasion: req.body.occasion || '休闲',
-        description: req.body.description?.trim() || '', image: req.body.image,
-        tags: Array.isArray(req.body.tags) ? req.body.tags : [],
-        category: req.body.category || 'tops',
-      })
-      .eq('id', req.params.id).select().single();
-    if (error) throw error;
-    if (!data) return res.status(404).json({ success: false, error: '单品不存在' });
-    res.json({ success: true, data: { ...data, createdAt: data.created_at } });
+    var name = req.body.name;
+    if (!name || !name.trim()) return res.status(400).json({ success: false, error: '服装名称为必填项' });
+    var updateData = {
+      name: name.trim(),
+      collection: (req.body.collection || '').trim() || 'Essential Collection',
+      price: Number(req.body.price) || 0,
+      material: (req.body.material || '').trim() || '',
+      color: (req.body.color || '').trim() || '',
+      occasion: req.body.occasion || '休闲',
+      description: (req.body.description || '').trim() || '',
+      image: req.body.image,
+      tags: Array.isArray(req.body.tags) ? req.body.tags : [],
+      category: req.body.category || 'tops',
+    };
+    var result = await supabase.from('closet_items').update(updateData).eq('id', req.params.id).select().single();
+    if (result.error) throw result.error;
+    if (!result.data) return res.status(404).json({ success: false, error: '单品不存在' });
+    res.json({ success: true, data: Object.assign({}, result.data, { createdAt: result.data.created_at }) });
   } catch (err) {
-    res.status(500).json({ success: false, error: (err as Error).message });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
 // DELETE /api/items/:id
 app.delete('/api/items/:id', async (req, res) => {
   try {
-    const { error } = await supabase.from('closet_items').delete().eq('id', req.params.id);
-    if (error) throw error;
+    var result = await supabase.from('closet_items').delete().eq('id', req.params.id);
+    if (result.error) throw result.error;
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ success: false, error: (err as Error).message });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
 // PATCH /api/items/:id/tags
 app.patch('/api/items/:id/tags', async (req, res) => {
   try {
-    const { tags } = req.body;
+    var tags = req.body.tags;
     if (!Array.isArray(tags)) return res.status(400).json({ success: false, error: 'tags 必须为字符串数组' });
-    const { data, error } = await supabase
-      .from('closet_items').update({ tags }).eq('id', req.params.id).select().single();
-    if (error) throw error;
-    if (!data) return res.status(404).json({ success: false, error: '单品不存在' });
-    res.json({ success: true, data: { id: data.id, tags: data.tags } });
+    var result = await supabase.from('closet_items').update({ tags: tags }).eq('id', req.params.id).select().single();
+    if (result.error) throw result.error;
+    if (!result.data) return res.status(404).json({ success: false, error: '单品不存在' });
+    res.json({ success: true, data: { id: result.data.id, tags: result.data.tags } });
   } catch (err) {
-    res.status(500).json({ success: false, error: (err as Error).message });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
-export default app;
+module.exports = app;
