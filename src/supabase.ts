@@ -19,7 +19,14 @@ export function onAuthChange(callback: (user: any) => void) {
 
 // 邮箱注册
 export async function signUp(email: string, password: string) {
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      // 不需要邮箱确认，直接可登录
+      emailRedirectTo: window.location.origin,
+    },
+  });
   if (error) throw error;
   return data;
 }

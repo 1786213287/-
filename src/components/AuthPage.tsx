@@ -35,11 +35,29 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
         await signIn(email.trim(), password);
         onAuthSuccess();
       } else {
-        await signUp(email.trim(), password);
-        setSuccessMsg('注册成功！请检查邮箱确认链接，然后返回登录。（如未收到邮件，可直接尝试登录）');
+        const result = await signUp(email.trim(), password);
+        // 如果邮箱确认已关闭，注册后自动登录
+        if (result.session) {
+          onAuthSuccess();
+        } else {
+          setSuccessMsg('注册成功！直接切换到登录模式即可登录。');
+          setIsLogin(true);
+        }
       }
     } catch (err: any) {
-      setError(err.message || '操作失败，请重试');
+      const msg = err.message || '';
+      if (msg.includes('Email not confirmed') || msg.includes('email_not_confirmed')) {
+        setError('邮箱尚未确认，请检查收件箱中的验证邮件');
+      } else if (msg.includes('Invalid login') || msg.includes('invalid_credentials')) {
+        setError('邮箱或密码错误');
+      } else if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('duplicate')) {
+        setError('该邮箱已注册，请切换到登录模式');
+        setIsLogin(true);
+      } else if (msg.includes('signups not allowed') || msg.includes('disabled')) {
+        setError('服务端未开启邮箱注册，请联系管理员');
+      } else {
+        setError(msg || '操作失败，请重试');
+      }
     } finally {
       setLoading(false);
     }
