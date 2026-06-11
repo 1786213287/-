@@ -36,11 +36,11 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
         onAuthSuccess();
       } else {
         const result = await signUp(email.trim(), password);
-        // 如果邮箱确认已关闭，注册后自动登录
-        if (result.session) {
+        // 注册成功，token 已自动保存
+        if (result.auth_token) {
           onAuthSuccess();
         } else {
-          setSuccessMsg('注册成功！直接切换到登录模式即可登录。');
+          setSuccessMsg('注册成功！请登录。');
           setIsLogin(true);
         }
       }

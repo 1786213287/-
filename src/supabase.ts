@@ -5,40 +5,63 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// 获取当前用户
-export function getCurrentUser() {
-  return supabase.auth.getUser();
+const TOKEN_KEY = 'closet_auth_token';
+
+// 保存登录状态
+export function saveAuth(token: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(TOKEN_KEY, token);
+  }
 }
 
-// 监听登录状态变化
-export function onAuthChange(callback: (user: any) => void) {
-  return supabase.auth.onAuthStateChange((_event, session) => {
-    callback(session?.user ?? null);
-  });
+// 获取当前 token
+export function getToken(): string | null {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem(TOKEN_KEY);
+  }
+  return null;
+}
+
+// 清除登录状态
+export function clearAuth(): void {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(TOKEN_KEY);
+  }
+}
+
+// 检查是否已登录
+export function isLoggedIn(): boolean {
+  return !!getToken();
 }
 
 // 邮箱注册
 export async function signUp(email: string, password: string) {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      // 不需要邮箱确认，直接可登录
-      emailRedirectTo: window.location.origin,
-    },
+  const { data, error } = await supabase.rpc('register_user', {
+    p_email: email,
+    p_password: password,
   });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
+  // 注册成功自动保存 token
+  saveAuth(data.auth_token);
   return data;
 }
 
 // 邮箱登录
 export async function signIn(email: string, password: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw error;
+  const { data, error } = await supabase.rpc('login_user', {
+    p_email: email,
+    p_password: password,
+  });
+  if (error) throw new Error(error.message);
+  saveAuth(data.auth_token);
   return data;
 }
 
 // 登出
 export async function signOut() {
-  await supabase.auth.signOut();
+  const token = getToken();
+  if (token) {
+    await supabase.rpc('logout_user', { p_token: token });
+  }
+  clearAuth();
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ClothingItem } from './types';
 import { fetchItems, createItem, updateItem, deleteItem, updateItemTags } from './api';
-import { supabase, signOut } from './supabase';
+import { isLoggedIn, getToken, signOut, clearAuth } from './supabase';
 import WardrobeGrid from './components/WardrobeGrid';
 import ItemDetails from './components/ItemDetails';
 import EditItemModal from './components/EditItemModal';
@@ -10,36 +10,19 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Shirt, Loader2 } from 'lucide-react';
 
 export default function App() {
-  const [user, setUser] = useState<any>(undefined); // undefined=loading, null=未登录, object=已登录
+  const [user, setUser] = useState<boolean>(false);
   const [items, setItems] = useState<ClothingItem[]>([]);
   const [currentView, setCurrentView] = useState<'grid' | 'details' | 'add_edit'>('grid');
   const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
   const [editItem, setEditItem] = useState<ClothingItem | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 监听登录状态
+  // 检查登录状态
   useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      if (!currentUser) {
-        setItems([]);
-        setLoading(false);
-        setError(null);
-      }
-    });
-
-    // 初始检查
-    supabase.auth.getSession().then(({ data }) => {
-      const currentUser = data.session?.user ?? null;
-      setUser(currentUser);
-      if (!currentUser) {
-        setLoading(false);
-      }
-    });
-
-    return () => data.subscription.unsubscribe();
+    if (isLoggedIn()) {
+      setUser(true);
+    }
   }, []);
 
   // 用户登录后加载数据
@@ -58,16 +41,26 @@ export default function App() {
     } catch (err: any) {
       console.error('加载衣橱数据失败:', err);
       setError(err.message || '无法连接服务器');
+      // token 过期，强制登出
+      if (err.message?.includes('过期') || err.message?.includes('登录')) {
+        clearAuth();
+        setUser(false);
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLogout = async () => {
-    await signOut();
+  const handleLoginSuccess = () => {
+    setUser(true);
   };
 
-  // 快速切换标签
+  const handleLogout = async () => {
+    await signOut();
+    setUser(false);
+    setItems([]);
+  };
+
   const handleUpdateTags = async (itemId: string, newTags: string[]) => {
     const prevItems = items;
     const prevSelected = selectedItem;
@@ -133,18 +126,9 @@ export default function App() {
     }
   };
 
-  // ---- 初始加载 ----
-  if (user === undefined) {
-    return (
-      <div className="w-full min-h-screen bg-[#05020a] flex items-center justify-center">
-        <Loader2 size={36} className="text-purple-400 animate-spin" />
-      </div>
-    );
-  }
-
   // ---- 未登录 → 登录页 ----
   if (!user) {
-    return <AuthPage onAuthSuccess={() => {}} />;
+    return <AuthPage onAuthSuccess={handleLoginSuccess} />;
   }
 
   // ---- 已登录 → 主界面 ----
@@ -152,7 +136,6 @@ export default function App() {
     <div className="w-full min-h-screen bg-neutral-bg text-text-primary antialiased selection:bg-primary-charcoal selection:text-white">
       <div className="relative mx-auto min-h-screen bg-neutral-bg select-none shadow-[2px_0px_30px_rgba(0,0,0,0.03)] border-x border-border-hairline/20 max-w-lg">
         
-        {/* 加载状态 */}
         {loading && (
           <div className="flex flex-col items-center justify-center min-h-screen gap-4">
             <Loader2 size={36} className="text-purple-400 animate-spin" />
@@ -160,7 +143,6 @@ export default function App() {
           </div>
         )}
 
-        {/* 错误状态 */}
         {!loading && error && (
           <div className="flex flex-col items-center justify-center min-h-screen gap-4 px-6 text-center">
             <div className="w-16 h-16 rounded-full bg-red-950/30 border border-red-500/30 flex items-center justify-center">
@@ -168,12 +150,8 @@ export default function App() {
             </div>
             <p className="text-sm text-red-400 font-semibold">连接云端失败</p>
             <p className="text-xs text-white/40 max-w-xs">{error}</p>
-            <button onClick={loadItems} className="px-5 py-2 bg-white/5 border border-white/10 rounded-full text-sm text-white hover:bg-white/10 transition-colors">
-              重试
-            </button>
-            <button onClick={handleLogout} className="text-xs text-white/40 hover:text-white/70 underline">
-              退出登录
-            </button>
+            <button onClick={loadItems} className="px-5 py-2 bg-white/5 border border-white/10 rounded-full text-sm text-white hover:bg-white/10 transition-colors">重试</button>
+            <button onClick={handleLogout} className="text-xs text-white/40 hover:text-white/70 underline">退出登录</button>
           </div>
         )}
 
