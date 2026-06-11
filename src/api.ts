@@ -1,59 +1,111 @@
 /**
- * 前端 API 层 — 通过 Vite 代理调用后端 Express 服务
+ * 前端 API 层 — 直接对接 Supabase (RLS 保护)
  */
+import { supabase } from './supabase';
 import { ClothingItem } from './types';
 
-const API_BASE = '/api';
-
-async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${url}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  });
-
-  const json = await res.json();
-
-  if (!json.success) {
-    throw new Error(json.error || '请求失败');
-  }
-
-  return json.data as T;
+function toItem(row: any): ClothingItem {
+  return {
+    id: row.id,
+    name: row.name,
+    collection: row.collection,
+    price: row.price,
+    material: row.material,
+    color: row.color,
+    occasion: row.occasion,
+    description: row.description,
+    image: row.image,
+    tags: row.tags,
+    category: row.category,
+    createdAt: row.created_at,
+  };
 }
 
 // 获取所有单品
 export async function fetchItems(): Promise<ClothingItem[]> {
-  return request<ClothingItem[]>('/items');
+  const { data, error } = await supabase
+    .from('closet_items')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return (data || []).map(toItem);
 }
 
 // 获取单个单品
 export async function fetchItem(id: string): Promise<ClothingItem> {
-  return request<ClothingItem>(`/items/${id}`);
+  const { data, error } = await supabase
+    .from('closet_items')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('单品不存在');
+  return toItem(data);
 }
 
 // 创建单品
 export async function createItem(
-  data: Omit<ClothingItem, 'id' | 'createdAt'>
+  payload: Omit<ClothingItem, 'id' | 'createdAt'>
 ): Promise<ClothingItem> {
-  return request<ClothingItem>('/items', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  const { data, error } = await supabase
+    .from('closet_items')
+    .insert({
+      name: payload.name,
+      collection: payload.collection,
+      price: payload.price,
+      material: payload.material,
+      color: payload.color,
+      occasion: payload.occasion,
+      description: payload.description,
+      image: payload.image,
+      tags: payload.tags,
+      category: payload.category,
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return toItem(data);
 }
 
 // 更新单品
 export async function updateItem(
   id: string,
-  data: Omit<ClothingItem, 'id' | 'createdAt'>
+  payload: Omit<ClothingItem, 'id' | 'createdAt'>
 ): Promise<ClothingItem> {
-  return request<ClothingItem>(`/items/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
+  const { data, error } = await supabase
+    .from('closet_items')
+    .update({
+      name: payload.name,
+      collection: payload.collection,
+      price: payload.price,
+      material: payload.material,
+      color: payload.color,
+      occasion: payload.occasion,
+      description: payload.description,
+      image: payload.image,
+      tags: payload.tags,
+      category: payload.category,
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('单品不存在');
+  return toItem(data);
 }
 
 // 删除单品
 export async function deleteItem(id: string): Promise<void> {
-  await request<void>(`/items/${id}`, { method: 'DELETE' });
+  const { error } = await supabase
+    .from('closet_items')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw new Error(error.message);
 }
 
 // 更新标签
@@ -61,8 +113,14 @@ export async function updateItemTags(
   id: string,
   tags: string[]
 ): Promise<{ id: string; tags: string[] }> {
-  return request<{ id: string; tags: string[] }>(`/items/${id}/tags`, {
-    method: 'PATCH',
-    body: JSON.stringify({ tags }),
-  });
+  const { data, error } = await supabase
+    .from('closet_items')
+    .update({ tags })
+    .eq('id', id)
+    .select('id, tags')
+    .single();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('单品不存在');
+  return { id: data.id, tags: data.tags };
 }
