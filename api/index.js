@@ -8,10 +8,10 @@ import { createClient } from '@supabase/supabase-js';
 
 const app = express();
 
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://ibdsfvftkeqhzvwcpjlp.supabase.co';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImliZHNmdmZ0a2VxaHp2d2NwamxwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTE1OTg1OCwiZXhwIjoyMDk2NzM1ODU4fQ.0f6zepUSvbsn-jooVoE0ADknV2F_pPVURrQJHDpqasI';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
